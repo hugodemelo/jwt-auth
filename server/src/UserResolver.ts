@@ -1,29 +1,45 @@
-import { Resolver, Mutation, Arg, Query } from "type-graphql";
+import { Resolver, Mutation, Arg, Query, ObjectType, Field } from "type-graphql";
 import { User } from "./entity/User";
+import { hash, compare } from "bcryptjs";
+import { sign } from "jsonwebtoken";
+
+@ObjectType()
+class LoginResponse {
+    @Field()
+    accessToken: string;
+}
 
 @Resolver()
 export class UserResolver {
-    @Query(() => String)
-    async getUser(@Arg("email") email: string) {
-        try {
-            const users = await User.find({ where: { email: email } });
-            return `${users[0].id} - ${users[0].email}`;
-        } catch (error) {
-            return error.message;
-        }
+    @Query(() => [User])
+    users() {
+        return User.find();
     }
 
     @Mutation(() => Boolean)
-    async createUser(@Arg("email") email: string, @Arg("password") password: string) {
-        try {
-            await User.insert({
-                email,
-                password
-            });
-        } catch (error) {
-            console.log(error);
-            return false;
-        }
+    async register(@Arg("email") email: string, @Arg("password") password: string) {
+        const hashedPassword = await hash(password, 12);
+        await User.insert({
+            email,
+            password: hashedPassword
+        });
         return true;
+    }
+
+    @Mutation(() => LoginResponse)
+    async login(@Arg("email") email: string, @Arg("password") password: string): Promise<LoginResponse> {
+        const user = await User.findOne({ where: { email } });
+        if (!user) {
+            throw new Error("User does not exist.");
+        }
+
+        const isPasswordValid = await compare(password, user.password);
+        if (!isPasswordValid) {
+            throw new Error("Wrong password.");
+        }
+
+        return {
+            accessToken: sign({ userId: user.id }, "user-secret", { expiresIn: "15m" })
+        };
     }
 }
