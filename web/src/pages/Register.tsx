@@ -8,13 +8,13 @@ export const Register: React.FC<RouteComponentProps> = ({ history }) => {
     const [registerMutation] = useRegisterMutation();
 
     const register = async () => {
-        const { data } = await registerMutation({
+        await registerMutation({
             variables: {
                 email,
                 password
             }
         });
-        console.log(data!.register);
+        history.push("/");
     };
 
     return (
@@ -22,7 +22,6 @@ export const Register: React.FC<RouteComponentProps> = ({ history }) => {
             onSubmit={e => {
                 e.preventDefault();
                 register();
-                history.push("/");
             }}
         >
             <div>
